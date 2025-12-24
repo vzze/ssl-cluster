@@ -1,0 +1,13 @@
+[Unit]
+Description=Cluster
+After=network.target
+
+[Service]
+WorkingDirectory=/path/to/cluster
+User=user
+ExecStart=python3 examples/service.py 192.168.X.X --peers ...
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

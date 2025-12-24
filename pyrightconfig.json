@@ -1,0 +1,12 @@
+{
+  "include": [
+      "cluster"
+  ],
+
+  "exclude": [
+    "**/__pycache__",
+    "**/*.pyc"
+  ],
+
+  "reportMissingImports": true
+}
