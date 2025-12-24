@@ -1,6 +1,7 @@
 from types import FunctionType
 from collections import deque
 from threading import Lock
+from time import sleep
 
 import selectors
 import socket
@@ -87,6 +88,8 @@ class SSLClient:
 
                 for key, mask in events:
                     key.data(key.fileobj, mask)
+
+                sleep(1.0)
         except Exception as err:
             print(err)
 
