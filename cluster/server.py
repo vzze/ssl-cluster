@@ -10,11 +10,14 @@ import socket
 from .sslsocket import SSLSocket
 
 class SSLServer:
+    def __log(self, str) -> None:
+        print(f"Server: {str}", flush=True)
+
     def __new_connection(self, socket: socket.socket, _) -> None:
         try:
             sock, (addr, _) = socket.accept()
 
-            print(f"Server: new connection {sock.getsockname()} <- {sock.getpeername()}")
+            self.__log(f"new connection {sock.getsockname()} <- {sock.getpeername()}")
         except:
             return
 
@@ -38,7 +41,7 @@ class SSLServer:
         self.__socks += [sock]
         self.__msg_queues[sock] = deque()
 
-        print(f"Server: total number of connections: {len(self.__socks)}")
+        self.__log(f"total number of connections: {len(self.__socks)}")
 
         if self.__msg_cb:
             self.__msg_cb(sock, msg, addr)
@@ -62,7 +65,7 @@ class SSLServer:
             self.disconnect(self.__socks[0], True)
 
     def disconnect(self, socket: socket.socket, try_disc: bool = False) -> None:
-        print(f"Server: disconnecting socket {socket}")
+        self.__log(f"disconnecting socket {socket}")
 
         try:
             self.__sel.unregister(socket)
@@ -78,7 +81,7 @@ class SSLServer:
             msg = socket.recv(SSLSocket.MSG_SIZE)
             if not msg: raise
 
-            print(f"Server: new message {socket.getsockname()} <- {socket.getpeername()}")
+            self.__log(f"new message {socket.getsockname()} <- {socket.getpeername()}")
 
             if self.__msg_cb:
                 self.__msg_cb(socket, msg.decode())
@@ -97,8 +100,8 @@ class SSLServer:
             except:
                 return
 
-            print((
-                f"Server: Sending message "
+            self.__log((
+                f"sending message "
                 f"{socket.getsockname()} -> {socket.getpeername()}"
             ))
 
@@ -156,7 +159,7 @@ class SSLServer:
                 if self.__loop_cb:
                     self.__loop_cb()
         except Exception as err:
-            print(err)
+            self.__log(err)
 
         for sock in self.__socks:
             self.disconnect(sock)

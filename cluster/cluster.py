@@ -14,6 +14,9 @@ class ClusterType(Enum):
     Unknown = "unknown"
 
 class Cluster:
+    def __log(self, str) -> None:
+        print(f"Cluster({self.__type.value}:{self.__ip}): {str}", flush=True)
+
     def __init__(
         self,
         peers: List[str],
@@ -70,17 +73,17 @@ class Cluster:
 
     def __server_msg_cb(self, socket, msg: str, addr: str | None) -> None:
         if msg == SSLSocketType.WantElection.value:
-            print(f"Cluster({self.__ip}): Received request for election, complying...")
+            self.__log(f"received request for election, complying...")
             return self.__server.disconnect_all()
 
         if msg == SSLSocketType.ElectionCandidate.value:
             return self.__server.disconnect(socket)
 
         if msg == SSLSocketType.HeartBeat.value:
-            print(f"Cluster({self.__ip}): Received heartbeat")
+            self.__log(f"received heartbeat")
 
             if addr and self.get_type() == ClusterType.Master and self.__ip < addr:
-                print(f"Cluster({self.__ip}): Heartbeat sent by bully, stepping down...")
+                self.__log(f"heartbeat sent by bully, stepping down...")
 
                 self.set_type(ClusterType.Unknown)
                 return self.__server.disconnect_all()
@@ -115,10 +118,10 @@ class Cluster:
             for peer in self.__peers:
                 if peer != self.__ip:
                     try:
-                        print(f"Cluster({self.__ip}): Sending heartbeat to peer({peer})")
+                        self.__log(f"sending heartbeat to peer({peer})")
                         SSLClient(SSLSocket(SSLSocketType.HeartBeat, peer, self.__port)).start()
                     except:
-                        print(f"Cluster({self.__ip}): Peer({peer}) not online")
+                        self.__log(f"peer({peer}) not online")
 
     def __server_loop_cb(self) -> None:
         if self.get_type() != ClusterType.Master:
@@ -130,39 +133,39 @@ class Cluster:
     def __want_election(self) -> None:
         self.set_type(ClusterType.Unknown)
 
-        print(f"Cluster({self.__ip}): Wants election")
+        self.__log("wants election")
 
         for peer in self.__peers:
             if peer != self.__ip:
                 try:
-                    print(f"Cluster({self.__ip}): Notifying peer({peer})")
+                    self.__log(f"notifying peer({peer})")
                     SSLClient(SSLSocket(SSLSocketType.WantElection, peer, self.__port)).start()
                 except:
-                    print(f"Cluster({self.__ip}): Peer({peer}) not online")
+                    self.__log(f"peer({peer}) not online")
 
     def __elect(self) -> None:
         established_conn_to_bully = False
         bully = self.__ip
 
-        print(f"Cluster({self.__ip}): Beginning election")
+        self.__log("beginning election")
 
         for peer in self.__peers:
             if peer > self.__ip:
                 try:
-                    print(f"Cluster({self.__ip}): Checking on candidate({peer})")
+                    self.__log(f"checking on candidate({peer})")
                     SSLClient(SSLSocket(SSLSocketType.ElectionCandidate, peer, self.__port)).start()
 
                     established_conn_to_bully = True
                     bully = peer
                 except:
-                    print(f"Cluster({self.__ip}): Candidate({peer}) not online")
+                    self.__log(f"candidate({peer}) not online")
 
         if established_conn_to_bully:
             self.set_type(ClusterType.Slave)
-            print(f"Cluster({self.__ip}): Became slave to peer({bully})")
+            self.__log(f"became slave to peer({bully})")
         else:
             self.set_type(ClusterType.Master)
-            print(f"Cluster({self.__ip}): Became master")
+            self.__log("became master")
 
         if self.__client:
             self.__client.stop()
@@ -190,28 +193,28 @@ class Cluster:
                 if self.get_type() == ClusterType.Unknown or not self.__client_thread or not self.__client_thread.is_alive():
                     self.__elect()
         except:
-            print(f"Cluster({self.__ip}): Cleaning up")
+            self.__log("cleaning up")
 
             with self.__lock:
                 self.__heartbeat = False
 
-            print(f"Cluster({self.__ip}): Joining heartbeat thread")
+            self.__log("joining heartbeat thread")
             self.__heartbeat_thread.join()
 
-            print(f"Cluster({self.__ip}): Stopping client")
+            self.__log("stopping client")
 
             if self.__client:
                 self.__client.stop()
 
-            print(f"Cluster({self.__ip}): Joining client thread")
+            self.__log("joining client thread")
 
             if self.__client_thread:
                 self.__client_thread.join()
 
-            print(f"Cluster({self.__ip}): Stopping server")
+            self.__log("stopping server")
             self.__server.stop()
 
-            print(f"Cluster({self.__ip}): Joining server thread")
+            self.__log("joining server thread")
             self.__server_thread.join()
 
             return

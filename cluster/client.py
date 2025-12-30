@@ -11,6 +11,9 @@ import ssl
 from .sslsocket import SSLSocket
 
 class SSLClient:
+    def __log(self, str) -> None:
+        print(f"Client: {str}", flush=True)
+
     def __handle_events(self, socket: socket.socket, mask) -> None:
         if mask & selectors.EVENT_READ:
             self.__new_msg(socket)
@@ -24,16 +27,20 @@ class SSLClient:
 
             if not msg: return self.stop()
 
+            self.__log(f"new message {socket.getsockname()} <- {socket.getpeername()}")
+
             if self.__msg_cb:
                 self.__msg_cb(msg.decode())
         except BlockingIOError as err:
             if err.errno not in (errno.EWOULDBLOCK, errno.EAGAIN):
+                self.__log(err)
                 return self.stop()
         except ssl.SSLError as err:
             if err.errno != (ssl.SSL_ERROR_WANT_READ):
+                self.__log(err)
                 return self.stop()
         except Exception as error:
-            print(error)
+            self.__log(error)
             return self.stop()
 
     def __available_for_write(self, socket: socket.socket) -> None:
@@ -91,7 +98,7 @@ class SSLClient:
 
                 sleep(1.0)
         except Exception as err:
-            print(err)
+            self.__log(err)
 
         self.__sel.unregister(self.__sock)
         self.__sock.close()
